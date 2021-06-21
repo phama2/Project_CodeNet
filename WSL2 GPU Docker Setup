@@ -1,0 +1,75 @@
+This is mostly based on instructions from https://docs.nvidia.com/cuda/wsl-user-guide/index.html.
+This is a guide that assumes you do not have anything related installed. (i.e. Docker for Windows)
+
+1. Install the latest build from the Microsoft Windows Insider Program.
+For GPU support, you would need to install the latest development version of windows from the Windows Insider Program. This is done through registration of from Microsoft's website from here https://insider.windows.com/en-us/getting-started#register. After that, you need to install the latest version from the dev program, instructions here https://blogs.windows.com/windows-insider/2020/06/15/introducing-windows-insider-channels/. After that, you should be able to go into your windows updates from the start menu and there should be an option to download a development build.
+
+2. Installing NVIDIA Drivers
+Next, you need to install NVIDIA's CUDA drivers for WSL based on the type of GPU you have, https://developer.nvidia.com/cuda/wsl. For me, I had to sign up for the developer's program, which was free, and then it allowed me to download an executable that automatically installed the drivers for me.
+
+3. Installing WSL2
+WSL instructions can be found here, https://docs.microsoft.com/en-us/windows/wsl/install-win10. Make sure the latest kernel is install by checking for updates in the windows updates section of the settings app on Windows 10. Then download your preference of linux on the Windows store. I chose ubuntu 18.04 since I already had it downloaded. 
+
+(WSL2 Ubuntu18.04 is the version I'm using. These instructions may or may not work for other Linux versions, so check the link on line 1 for more information.)
+
+4. Setup CUDA Toolkit
+Run the following commands to download and setup NVIDIA's CUDA Toolkit
+$ apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+$ sh -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list'
+$ apt-get update
+(Note that cuda-toolkit may be updated in the future and that this command may change depending on version)
+$ apt-get install -y cuda-toolkit-11-0
+
+5. Setting up to run Containers
+Install Docker using the command below: (The current version of NVIDIA Container Toolkit does not support Docker Desktop WSL)
+curl https://get.docker.com | sh
+
+Install NVIDIA Container Toolkit by running the following commands:
+$ distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+$ curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+$ curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+$ curl -s -L https://nvidia.github.io/libnvidia-container/experimental/$distribution/libnvidia-container-experimental.list | sudo tee /etc/apt/sources.list.d/libnvidia-container-experimental.list
+(Note that in my case, my Ubuntu instance timed out for some unknown reason when trying to fetch the gpgkey and I had to manually download it and then run the command after pointing to the downloaded file)
+
+Install NVIDIA runtime packages:
+$ sudo apt-get update
+$ sudo apt-get install -y nvidia-docker2
+
+Open a new WSL2 Window (i.e. Ubuntu in my case). Start and stop the Docker daemon using the commands to complete the installation:
+$ sudo service docker stop
+$ sudo service docker start
+
+6. Test run CUDA Containers
+Run this command in terminal:
+$ docker run --gpus all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark
+
+My output is:
+Run "nbody -benchmark [-numbodies=<numBodies>]" to measure performance.
+        -fullscreen       (run n-body simulation in fullscreen mode)
+        -fp64             (use double precision floating point values for simulation)
+        -hostmem          (stores simulation data in host memory)
+        -benchmark        (run benchmark to measure performance)
+        -numbodies=<N>    (number of bodies (>= 1) to run in simulation)
+        -device=<d>       (where d=0,1,2.... for the CUDA device to use)
+        -numdevices=<i>   (where i=(number of CUDA devices > 0) to use for simulation)
+        -compare          (compares simulation results running once on the default GPU and once on the CPU)
+        -cpu              (run n-body simulation on the CPU)
+        -tipsy=<file.bin> (load a tipsy model file for simulation)
+
+NOTE: The CUDA Samples are not meant for performance measurements. Results may vary when GPU Boost is enabled.
+
+> Windowed mode
+> Simulation data stored in video memory
+> Single precision floating point simulation
+> 1 Devices used for simulation
+GPU Device 0: "Turing" with compute capability 7.5
+
+> Compute 7.5 CUDA device: [NVIDIA GeForce RTX 2080 with Max-Q Design]
+47104 bodies, total time for 10 iterations: 138.109 ms
+= 160.654 billion interactions per second
+= 3213.086 single-precision GFLOP/s at 20 flops per interaction
+
+
+If you have any errors running this, ensure that you followed the steps correctly. Also check out the link in the first line for the most up to date information regarding this setup. In my case, I received errors due to not having the latest development version of windows that supports CUDA for WSL2.
+
+
